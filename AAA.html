@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Assistant</title>
+
+<script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+
+<style>
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #ffffff;
+  font-family: Arial, sans-serif;
+}
+
+#webchat {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Dense text */
+.webchat__message,
+.webchat__bubble__content {
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+
+/* KEEP bubbles centered + top-aligned */
+.webchat__bubble {
+  display: flex;
+  align-items: flex-start;
+}
+
+.webchat__bubble__content {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* MARKDOWN: stacked headers (no letter breaking) */
+.markdown strong,
+.markdown b {
+  display: inline-block;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-height: 1.15;
+}
+
+/* Paragraph spacing */
+.markdown p {
+  margin: 6px 0;
+}
+
+/* Tall composer */
+.webchat__send-box {
+  background: #f2f3f5;
+  padding: 32px 24px;
+  border-top: 1px solid #dcdfe6;
+  box-shadow: 0 -3px 10px rgba(0,0,0,0.12);
+}
+
+.webchat__send-box-input {
+  background: #ffffff;
+  border: 1px solid #ccd2dc;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  min-height: 48px;
+}
+
+.webchat__send-box button {
+  background-color: #005EB8;
+  border-radius: 12px;
+  height: 46px;
+  width: 46px;
+}
+</style>
+</head>
+
+<body>
+<div id="webchat"></div>
+
+<script>
+(async function () {
+
+  // URL + default prompt
+  const DEFAULT_PROMPT = "Show me 5 spp work orders";
+
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+
+  let autoPrompt = urlParams.get("prompt") || DEFAULT_PROMPT;
+
+  // FORCE THE URL to show the prompt if missing
+  if (!urlParams.get("prompt")) {
+    const encodedPrompt = encodeURIComponent(autoPrompt);
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}?prompt=${encodedPrompt}`
+    );
+  }
+
+  // Fetch Direct Line token
+  const tokenRes = await fetch(
+    "https://92090669134ce372b182b6f53013f4.0b.environment.api.powerplatform.com/powervirtualagents/botsbyschema/crbf0_agent2_uPuGjw/directline/token?api-version=2022-03-01-preview"
+  );
+
+  const { token } = await tokenRes.json();
+  const directLine = window.WebChat.createDirectLine({ token });
+
+  // Render WebChat
+  window.WebChat.renderWebChat(
+    {
+      directLine,
+      styleOptions: {
+        bubbleMaxWidth: "200%",
+        bubbleBackground: "#F0F6FF",
+        bubbleFromUserBackground: "#FFFFFF",
+        fontSizeMedium: "13px"
+      }
+    },
+    document.getElementById("webchat")
+  );
+
+  // Auto-send prompt ONCE
+  const sub = directLine.connectionStatus$.subscribe(status => {
+    if (status === 2) {
+      setTimeout(() => {
+        directLine.postActivity({
+          type: "message",
+          from: { id: "user", role: "user" },
+          text: autoPrompt
+        }).subscribe();
+      }, 1000);
+
+      sub.unsubscribe();
+    }
+  });
+
+})();
+</script>
+
+</body>
+</html>
