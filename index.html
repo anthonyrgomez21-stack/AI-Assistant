@@ -88,23 +88,31 @@ html, body {
 <script>
 (async function () {
 
-  // URL + default prompt
   const DEFAULT_PROMPT = "Show me 5 spp work orders";
 
-  const queryString = window.location.search;
-  const urlParams = new URLSearchParams(queryString);
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasPromptParam = urlParams.has("prompt");
+  const promptValue = urlParams.get("prompt");
 
-  let autoPrompt = urlParams.get("prompt") || DEFAULT_PROMPT;
+  let autoPrompt = null;
 
-  // FORCE THE URL to show the prompt if missing
-  if (!urlParams.get("prompt")) {
-    const encodedPrompt = encodeURIComponent(autoPrompt);
+  // ✅ Case 1: param missing → use default
+  if (!hasPromptParam) {
+    autoPrompt = DEFAULT_PROMPT;
+
+    // Optional: reflect default in URL (ONLY here)
+    const encoded = encodeURIComponent(DEFAULT_PROMPT);
     window.history.replaceState(
       null,
       "",
-      `${window.location.pathname}?prompt=${encodedPrompt}`
+      `${window.location.pathname}?prompt=${encoded}`
     );
   }
+  // ✅ Case 2: param exists AND has text → use it
+  else if (promptValue && promptValue.trim() !== "") {
+    autoPrompt = promptValue;
+  }
+  // ❌ Case 3: param exists but empty → do NOTHING
 
   // Fetch Direct Line token
   const tokenRes = await fetch(
@@ -128,9 +136,9 @@ html, body {
     document.getElementById("webchat")
   );
 
-  // Auto-send prompt ONCE
+  // ✅ Auto-send ONLY if autoPrompt exists
   const sub = directLine.connectionStatus$.subscribe(status => {
-    if (status === 2) {
+    if (status === 2 && autoPrompt) {
       setTimeout(() => {
         directLine.postActivity({
           type: "message",
